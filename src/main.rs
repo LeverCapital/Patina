@@ -36,9 +36,9 @@ impl Exchange for Kine {
 // Generate the type-safe contract bindings by providing the ABI
 // definition in human readable format
 abigen!(
-    Vault,
+    CryptoKitty,
     r#"[
-        poolAmounts(address _token)(uint256)
+     isPregnant(uint256 _kittyId)(bool)
     ]"#,
 );
 
@@ -46,9 +46,9 @@ abigen!(
 async fn main() -> Result<()> {
     // Load .env file
     dotenv().ok();
-
+    // Setup bot's wallet
     let client = Arc::new({
-        let provider = Provider::<Http>::try_from(env::var("ARB_MAIN")?)?;
+        let provider = Provider::<Http>::try_from(env::var("ETH_MAIN")?)?;
         let chain_id = provider.get_chainid().await?;
 
         // this wallet's private key
@@ -59,14 +59,23 @@ async fn main() -> Result<()> {
         SignerMiddleware::new(provider, wallet)
     });
 
-    let contract_address = env::var("GMX_VAULT_MAIN")?.parse::<Address>()?;
-    let contract = Vault::new(contract_address, Arc::clone(&client));
+    let contract_address = "0x06012c8cf97BEaD5deAe237070F9587f8E7A266d".parse::<Address>()?;
+    let contract = CryptoKitty::new(contract_address, Arc::clone(&client));
 
-    let token_address = "0xff970a61a04b1ca14834a43f5de4533ebddb5cc8".parse::<Address>()?;
+    let mut numPreggos = 0;
+    let supply = 2013347;
+    for n in 275495..supply {
+        let index = n.to_string().parse::<U256>()?;
+        let check = contract.is_pregnant(index).call().await?;
+        if check {
+            numPreggos += 1;
+            println!("{}", n);
+            if numPreggos == 22 {
+                break;
+            }
+        }
+    }
 
-    // getReserves -> get_reserves
-    let amt = contract.pool_amounts(token_address).call().await?;
-    println!("{}", amt);
     Ok(())
 }
 
