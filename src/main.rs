@@ -3,10 +3,6 @@ extern crate dotenv;
 use dotenv::dotenv;
 use ethers::prelude::*;
 use eyre::Result;
-use std::env;
-use std::sync::Arc;
-use ethers::{abi::AbiDecode, utils::keccak256};
-use hex::FromHex;
 
 pub mod utils;
 // pub mod model;
@@ -40,19 +36,25 @@ async fn main() -> Result<()> {
 
     loop {
         let next_item = stream.next().await.unwrap();
-        let events = match next_item {
+        let event = match next_item {
             Ok(data) => data,
-            Err(e) => {
-                //INFO: Error is usually a decoding error due to InvalidData. Dunno why
-                // If the stream errors, we retry
+            Err(_) => {
+                // Error is usually due to decoding invalid data. Never mind, just retry
                 println!("Retrying stream...");
                 continue;
             },
         };
-        println!(
-            "from: {:?}",
-            events,
-        );
+        match event {
+            OrderBookEvents::CreateIncreaseOrderFilter(event) => {
+                println!("CreateIncreaseOrder event received");
+                println!("from: {:?}", event.account);
+            },
+            OrderBookEvents::CreateDecreaseOrderFilter(event) => {
+                println!("CreateDecreaseOrder event received");
+                println!("from: {:?}", event.account);
+            },
+        }
+
     }
 
     Ok(())
