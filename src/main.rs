@@ -35,8 +35,18 @@ async fn main() -> Result<()> {
     println!("Starting to listen to events....");
     // Subscribe to CreateIncreaseOrder events
     let events = orderbook_contract.events();
-    let mut stream = events.stream().await?.take(2);
-    while let Some(Ok(event)) = stream.next().await {
+    let mut stream = events.stream().await?; // Why take 2?
+    // TODO: Keep listening to events without stopping
+    loop {
+        let buffer = stream.next().await.unwrap();
+        let event = match buffer {
+            Ok(data) => data,
+            Err(e) => {
+                println!("Error: {:?}", e);
+                println!("Retrying stream...");
+                continue;
+            },
+        };
         println!(
             "from: {:?}",
             event.account,
