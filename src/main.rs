@@ -16,6 +16,7 @@ abigen!(
     OrderBook,
     r#"[
         event CreateIncreaseOrder(address indexed account, uint256 orderIndex, address purchaseToken, uint256 purchaseTokenAmount, address collateralToken, address indexToken, uint256 sizeDelta, bool isLong, uint256 triggerPrice, bool triggerAboveThreshold, uint256 executionFee)
+        event CreateDecreaseOrder(address indexed account,uint256 orderIndex,address collateralToken, uint256 collateralDelta, address indexToken, uint256 sizeDelta, bool isLong, uint256 triggerPrice, bool triggerAboveThreshold, uint256 executionFee)
     ]"#,
 );
 
@@ -35,21 +36,22 @@ async fn main() -> Result<()> {
     println!("Starting to listen to events....");
     // Subscribe to CreateIncreaseOrder events
     let events = orderbook_contract.events();
-    let mut stream = events.stream().await?; // Why take 2?
-    // TODO: Keep listening to events without stopping
+    let mut stream = events.subscribe().await?;
+
     loop {
-        let buffer = stream.next().await.unwrap();
-        let event = match buffer {
+        let next_item = stream.next().await.unwrap();
+        let events = match next_item {
             Ok(data) => data,
             Err(e) => {
-                println!("Error: {:?}", e);
+                //INFO: Error is usually a decoding error due to InvalidData. Dunno why
+                // If the stream errors, we retry
                 println!("Retrying stream...");
                 continue;
             },
         };
         println!(
             "from: {:?}",
-            event.account,
+            events,
         );
     }
 

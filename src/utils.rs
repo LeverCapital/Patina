@@ -1,7 +1,7 @@
 use ethers::prelude::*;
 use std::sync::Arc;
 use eyre::Result;
-use std::{fmt::Write, num::ParseIntError};
+use std::num::ParseIntError;
 
 /// Return a Provider for the given Websocket URL
 pub async fn get_ws_provider() -> Result<Provider<Ws>> {
