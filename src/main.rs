@@ -28,7 +28,7 @@ pub struct Args {
 async fn main() -> Result<()> {
     // Set up tracing and parse args.
     let filter = filter::Targets::new()
-        .with_target("gmx_copy_catto", Level::INFO)
+        .with_target("patina", Level::INFO)
         .with_target("artemis_core", Level::INFO);
     tracing_subscriber::registry()
         .with(tracing_subscriber::fmt::layer())
@@ -37,6 +37,7 @@ async fn main() -> Result<()> {
 
     let args = Args::parse();
 
+    info!("Starting up Patina...");
     // Set up ethers provider.
     let ws = Ws::connect(args.wss).await?;
     let provider = Provider::new(ws);

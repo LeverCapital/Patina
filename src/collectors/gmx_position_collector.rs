@@ -13,6 +13,16 @@ abigen!(
     derives(Copy)
 );
 
+abigen!(
+    PositionRouter,
+    r#"[
+        event CreateIncreasePosition (address indexed account, address[] path, address indexToken, uint256 amountIn, uint256 minOut, uint256 sizeDelta, bool isLong, uint256 acceptablePrice, uint256 executionFee, uint256 index, uint256 queueIndex, uint256 blockNumber, uint256 blockTime, uint256 gasPrice)
+        event CreateDecreasePosition (address indexed account, address[] path, address indexToken, uint256 collateralDelta, uint256 sizeDelta, bool isLong, address receiver, uint256 acceptablePrice, uint256 minOut, uint256 executionFee, uint256 index, uint256 queueIndex, uint256 blockNumber, uint256 blockTime)
+    ]"#,
+);
+
+const POS_ROUTER_ADDR: &str = "0xb87a436B93fFE9D75c5cFA7bAcFff96430b09868";
+
 /// A collector that listens for position changes on GMX, and generates a stream of
 /// [events](GMXPosition) which contain trader address, collateral and other position info.
 pub struct GMXPositionCollector<M> {
@@ -38,8 +48,6 @@ pub enum PositionType {
     Long,
 }
 
-// pub enum Position
-
 /// Implementation of the [Collector](Collector) trait for the [OpenseaOrderCollector](OpenseaOrderCollector).
 #[async_trait]
 impl<M> Collector<GMXPosition> for GMXPositionCollector<M>
@@ -50,18 +58,18 @@ where
 {
     async fn get_event_stream(&self) -> Result<CollectorStream<'_, GMXPosition>> {
         let filter = Filter::new().address(
-            "0x09f77E8A13De9a35a7231028187e9fD5DB8a2ACB"
+            POS_ROUTER_ADDR
                 .parse::<Address>()
                 .unwrap(),
         );
         let stream = self.client.subscribe_logs(&filter).await?;
         let stream = stream.filter_map(|log| async {
-            match parse_log::<OrderBookEvents>(log) {
-                Ok(OrderBookEvents::CreateDecreaseOrderFilter(decoded)) => Some(GMXPosition {
+            match parse_log::<PositionRouterEvents>(log) {
+                Ok(PositionRouterEvents::CreateIncreasePositionFilter(decoded)) => Some(GMXPosition {
                     trader: decoded.account,
                     position_type: PositionType::Short,
                 }),
-                Ok(OrderBookEvents::CreateIncreaseOrderFilter(decoded)) => Some(GMXPosition {
+                Ok(PositionRouterEvents::CreateDecreasePositionFilter(decoded)) => Some(GMXPosition {
                     trader: decoded.account,
                     position_type: PositionType::Long,
                 }),
