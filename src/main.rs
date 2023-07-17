@@ -1,62 +1,62 @@
-extern crate dotenv;
+mod collectors;
+mod strategies;
 
-use dotenv::dotenv;
-use ethers::prelude::*;
-use eyre::Result;
+use anyhow::Result;
+use artemis_core::types::{Collector, CollectorStream};
+use clap::Parser;
+use collectors::gmx_position_collector::GMXPositionCollector;
+use ethers::providers::{Provider, Ws};
+use ethers::signers::{LocalWallet, Signer};
+use strategies::gmx_copy_catto::{Action, Event, GMXCopyCatto};
+use tracing::{info, Level};
+use tracing_subscriber::{filter, prelude::*};
 
-pub mod utils;
-// pub mod model;
-// Generate the type-safe contract bindings by providing the ABI
-// definition in human readable format
-abigen!(
-    OrderBook,
-    r#"[
-        event CreateIncreaseOrder(address indexed account, uint256 orderIndex, address purchaseToken, uint256 purchaseTokenAmount, address collateralToken, address indexToken, uint256 sizeDelta, bool isLong, uint256 triggerPrice, bool triggerAboveThreshold, uint256 executionFee)
-        event CreateDecreaseOrder(address indexed account,uint256 orderIndex,address collateralToken, uint256 collateralDelta, address indexToken, uint256 sizeDelta, bool isLong, uint256 triggerPrice, bool triggerAboveThreshold, uint256 executionFee)
-    ]"#,
-);
+use std::sync::Arc;
+
+use artemis_core::engine::Engine;
+use artemis_core::types::CollectorMap;
+
+/// CLI Options.
+#[derive(Parser, Debug)]
+pub struct Args {
+    /// Ethereum node WS endpoint.
+    #[arg(long)]
+    pub wss: String,
+}
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    // Load .env file
-    dotenv().ok();
-    // Connect to Provider
-    let client = utils::create_websocket_client().await?;
+    // Set up tracing and parse args.
+    let filter = filter::Targets::new()
+        .with_target("gmx_copy_catto", Level::INFO)
+        .with_target("artemis_core", Level::INFO);
+    tracing_subscriber::registry()
+        .with(tracing_subscriber::fmt::layer())
+        .with(filter)
+        .init();
 
-    // Orderbook contract
-    let orderbook_contract = OrderBook::new(
-        "0x09f77E8A13De9a35a7231028187e9fD5DB8a2ACB".parse::<Address>()?,
-        client.clone(),
-    );
+    let args = Args::parse();
 
-    println!("Starting to listen to events....");
-    // Subscribe to CreateIncreaseOrder events
-    let events = orderbook_contract.events();
-    let mut stream = events.subscribe().await?;
+    // Set up ethers provider.
+    let ws = Ws::connect(args.wss).await?;
+    let provider = Provider::new(ws);
 
-    loop {
-        let next_item = stream.next().await.unwrap();
-        let event = match next_item {
-            Ok(data) => data,
-            Err(_) => {
-                // Error is usually due to decoding invalid data. Never mind, just retry
-                println!("Retrying stream...");
-                continue;
-            },
-        };
-        match event {
-            OrderBookEvents::CreateIncreaseOrderFilter(event) => {
-                println!("CreateIncreaseOrder event received");
-                println!("from: {:?}", event.account);
-            },
-            OrderBookEvents::CreateDecreaseOrderFilter(event) => {
-                println!("CreateDecreaseOrder event received");
-                println!("from: {:?}", event.account);
-            },
+    // Set up engine.
+    let mut engine: Engine<Event, Action> = Engine::default();
+
+    // Set up block collector.
+    let gmx_collector = Box::new(GMXPositionCollector::new(provider.clone().into()));
+    let gmx_collector = CollectorMap::new(gmx_collector, Event::OpenPosition);
+    engine.add_collector(Box::new(gmx_collector));
+
+    let strat = GMXCopyCatto::new(Arc::new(provider.clone()));
+    engine.add_strategy(Box::new(strat));
+
+    // Start engine.
+    if let Ok(mut set) = engine.run().await {
+        while let Some(res) = set.join_next().await {
+            info!("res: {:?}", res);
         }
-
     }
-
     Ok(())
-    
-        }
+}
