@@ -2,11 +2,11 @@ mod collectors;
 mod strategies;
 
 use anyhow::Result;
-use artemis_core::types::{Collector, CollectorStream};
+
 use clap::Parser;
 use collectors::gmx_position_collector::GMXPositionCollector;
 use ethers::providers::{Provider, Ws};
-use ethers::signers::{LocalWallet, Signer};
+
 use strategies::gmx_copy_catto::{Action, Event, GMXCopyCatto};
 use tracing::{info, Level};
 use tracing_subscriber::{filter, prelude::*};

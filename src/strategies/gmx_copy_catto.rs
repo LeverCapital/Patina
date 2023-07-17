@@ -7,16 +7,12 @@ use tracing::info;
 
 use artemis_core::types::Strategy;
 use ethers::{
-    core::{
-        abi::AbiDecode,
-        types::{Address, BlockNumber, Filter, U256},
-    },
-    providers::{Middleware, Provider, StreamExt, Ws},
+    providers::{Middleware, StreamExt},
 };
 
 use crate::collectors::gmx_position_collector::GMXPosition;
 
-use ethers::types::{Chain, Log, H160, H256};
+use ethers::types::{H160};
 
 /// Core Event enum for the current strategy.
 #[derive(Debug, Clone)]

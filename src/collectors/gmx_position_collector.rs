@@ -55,12 +55,6 @@ where
                 .unwrap(),
         );
         let stream = self.client.subscribe_logs(&filter).await?;
-        let match1: H256 = "b27b9afe3043b93788c40cfc3cc73f5d928a2e40f3ba01820b246426de8fa1b9"
-            .parse()
-            .unwrap();
-        // info!("sig2: {:?}", sig2);
-        // let sig = CreateIncreaseOrderFilter::default().signature();
-
         let stream = stream.filter_map(|log| async {
             match parse_log::<OrderBookEvents>(log) {
                 Ok(OrderBookEvents::CreateDecreaseOrderFilter(decoded)) => Some(GMXPosition {
