@@ -6,13 +6,10 @@ use async_trait::async_trait;
 use tracing::info;
 
 use artemis_core::types::Strategy;
-use ethers::{
-    providers::{Middleware, StreamExt},
-};
-
+use ethers::providers::Middleware;
 use crate::collectors::gmx_position_collector::GMXPosition;
 
-use ethers::types::{H160};
+use ethers::types::H160;
 
 /// Core Event enum for the current strategy.
 #[derive(Debug, Clone)]
