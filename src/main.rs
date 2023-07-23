@@ -1,5 +1,6 @@
 mod collectors;
 mod strategies;
+mod bindings;
 
 use anyhow::Result;
 
@@ -47,7 +48,7 @@ async fn main() -> Result<()> {
 
     // Set up block collector.
     let gmx_collector = Box::new(GMXPositionCollector::new(provider.clone().into()));
-    let gmx_collector = CollectorMap::new(gmx_collector, Event::OpenPosition);
+    let gmx_collector = CollectorMap::new(gmx_collector, Event::PositionUpdate);
     engine.add_collector(Box::new(gmx_collector));
 
     let strat = GMXCopyCatto::new(Arc::new(provider.clone()));
